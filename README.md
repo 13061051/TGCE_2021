@@ -10,7 +10,11 @@ to use the user behavior logs at 4 levels.
 change the code in the line 94 in the https://github.com/minhcp/GBUL/blob/master/xgb.py as the following:  
 "x,y,train_pairs,test_pairs,xt,xv,yv"  
 to both save the train_pairs and test_pairs for my model.  
-  
+
+#  
+mkdir data dir 'data', then put your process data in the 'data' dir 
+put the 'candidates', 'original' and 'tmp' in GBUL dir to the TGCE 'data' dir  
+
 run the following codes to obtain the final results:  
 #before train, apply python gensim with skip-gram method to generate each items's embedding.  
 #step4:  
