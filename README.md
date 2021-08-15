@@ -12,7 +12,7 @@ change the code in the line 94 in the https://github.com/minhcp/GBUL/blob/master
 to both save the train_pairs and test_pairs for my model.
 
 run the following codes to obtain the final results:
-# before train, apply python gensim with skip-gram method to generate each items's embedding.
+#before train, apply python gensim with skip-gram method to generate each items's embedding.
 #step4:
 applies the data from the GBUL work for my model.
 There are 3 steps for my codes:
