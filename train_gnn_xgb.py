@@ -573,11 +573,6 @@ if __name__ == '__main__':
         if F1>best_F1:
             best_F1=F1
             torch.save(user_macth_model.state_dict(), 'save_gnn/'+str(args.model_path)+'.pkl')
-        if epoch>5 and epoch%2==0:
-            print(time_now_str() + ' start test on epoch '+str(epoch)+" ")
-            user_macth_model.eval()
-            evaluate_test_acc(test_x=x_test, test_y=test_y, model=user_macth_model, test_x_base=test_x_other)
-            print('---------------------------------------------------------------------------------------')
     print(time_now_str() + ' start test')
     user_macth_model.load_state_dict(torch.load('save_gnn/'+str(args.model_path)+'.pkl'))
     user_macth_model = user_macth_model.to(device)
