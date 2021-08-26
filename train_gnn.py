@@ -317,48 +317,55 @@ def evaluate_test_acc(test_x, test_y, model):
 	best_F1 = 0
 	best_p = 0
 	best_R = 0
+	ths = [0.01 * i for i in range(0,100)]
 	golden_test = load_golden_set('data/original/golden_valid2.csv')
 	gnum=len(golden_test)
-	#for th in ths:
-	TP = 0
-	FN = 0
-	FP = 0
-	TN = 0
-	count0 = 0
-	count_l1 = 0
-	th=0.50
-	for i in range(len(preds)):
-		if preds[i] > th:
-			count_l1 = count_l1 + 1
-		# TP: Ture Positive 把正的判断为正的数目 True Positive,判断正确，且判为了正，即正的预测为正的。
-		if preds[i] > th and test_y[i] == 1:
-			TP = TP + 1
-		# TN: True Negative 把负的判为负的数目 True Negative,判断正确，且判为了负，即把负的判为了负的
-		elif preds[i] <= th and test_y[i] == 0:
-			TN = TN + 1
-		# FP: False Positive 把负的错判为正的数目 False Positive, 判断错误，且判为了正，即把负的判为了正的
-		elif preds[i] > th and test_y[i] == 0:
-			FP = FP + 1
-		# FN: False Negative 把正的错判为负的数目 False Negative,判断错误，且判为了负，即把正的判为了负的
-		elif preds[i] <= th and test_y[i] == 1:
-			FN = FN + 1
-	# 准确率是指有在所有的判断中有多少判断正确的，即把正的判断为正的，还有把负的判断为负的
-	# Acc = (TP + TN) / (TP + TN + FN + FP)
-	# 精确率是相对于预测结果而言的，它表示的是预测为正的样本中有多少是对的
-	if TP + FP == 0:
-		P = 0
-	else:
-		P = TP / (TP + FP)
-	# 召回率是相对于样本而言的，即样本中有多少正样本被预测正确了，这样的有TP个，所有的正样本有两个去向，一个是被判为正的，另一个是错判为负的，因此总共有TP+FN个，所以，召回率 R= TP / (TP+FN)
+	for th in ths:
+		TP = 0
+		FN = 0
+		FP = 0
+		TN = 0
+		count0 = 0
+		count_l1 = 0
+		for i in range(len(preds)):
+			if preds[i] > th:
+				count_l1 = count_l1 + 1
+			# TP: Ture Positive 把正的判断为正的数目 True Positive,判断正确，且判为了正，即正的预测为正的。
+			if preds[i] > th and test_y[i] == 1:
+				TP = TP + 1
+			# TN: True Negative 把负的判为负的数目 True Negative,判断正确，且判为了负，即把负的判为了负的
+			elif preds[i] <= th and test_y[i] == 0:
+				TN = TN + 1
+			# FP: False Positive 把负的错判为正的数目 False Positive, 判断错误，且判为了正，即把负的判为了正的
+			elif preds[i] > th and test_y[i] == 0:
+				FP = FP + 1
+			# FN: False Negative 把正的错判为负的数目 False Negative,判断错误，且判为了负，即把正的判为了负的
+			elif preds[i] <= th and test_y[i] == 1:
+				FN = FN + 1
+		# 准确率是指有在所有的判断中有多少判断正确的，即把正的判断为正的，还有把负的判断为负的
+		# Acc = (TP + TN) / (TP + TN + FN + FP)
+		# 精确率是相对于预测结果而言的，它表示的是预测为正的样本中有多少是对的
+		if TP + FP == 0:
+			P = 0
+		else:
+			P = TP / (TP + FP)
+		# 召回率是相对于样本而言的，即样本中有多少正样本被预测正确了，这样的有TP个，所有的正样本有两个去向，一个是被判为正的，另一个是错判为负的，因此总共有TP+FN个，所以，召回率 R= TP / (TP+FN)
 
-	# R = TP / (TP + FN)
-	R = TP / gnum
-	if P + R == 0:
-		F1 = 0
-	else:
-		F1 = (2 * P * R) / (P + R)
-	print('th,P,R,F1', th, P, R, F1)
+		# R = TP / (TP + FN)
+		R = TP / gnum
+		if P + R == 0:
+			F1 = 0
+		else:
+			F1 = (2 * P * R) / (P + R)
+		if F1 > best_F1:
+			best_p = P
+			best_th = th
+			best_F1 = F1
+			best_R = R
+		#if th == 0.5:
+		print('th,P,R,F1', th, P, R, F1)
 	# print(time_now_str() + " test result with threshold: " + str(th), 'precission: ', P, 'recall: ', R, 'F1: ', F1)
+	print(time_now_str() + " Test Pre: " + str(best_p) + " Rec: " + str(best_R) + " F1: " + str(best_F1) + " bth: " + str(best_th))
 	print('\n')
 
 
@@ -530,8 +537,7 @@ if __name__ == '__main__':
 			best_F1=F1
 			torch.save(user_macth_model.state_dict(), 'save_gnn/'+str(args.model_path)+'.pkl')
 			best_epoch=epoch
-		if epoch-best_epoch>5:
-			#continue reduce five times stop
+		if epoch-best_epoch>3:
 			print(time_now_str() + ' early stopping')
 			break
 	print(time_now_str() + ' start test')
