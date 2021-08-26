@@ -81,7 +81,170 @@ class ONAN(nn.Module):
 				rst = self.activation(rst)
 			return rst
 
+class ONAN_ATT(nn.Module):
+	def __init__(self, input_dim, output_dim, dropout=0.0,activation=None, batch_norm=True):
+		super().__init__()
+		self.batch_norm = nn.BatchNorm1d(input_dim) if batch_norm else None
+		self.gru = nn.GRU(input_dim, input_dim,dropout=dropout, batch_first=True)
+		self.fc_self = nn.Linear(input_dim, output_dim, bias=False)
+		self.fc_neigh = nn.Linear(input_dim, output_dim, bias=False)
+		self.activation = activation
+		self.dim=input_dim
+		self.K = nn.Linear(self.dim, self.dim, bias=False)
+		self.Q = nn.Linear(self.dim, self.dim, bias=False)
+		self.V = nn.Linear(self.dim, self.dim, bias=False)
+		print('make ONAN_ATT Layer')
+	def self_att_compute(self, x):
+		# [seq, seq_hour, mask]
+		q = self.Q(x)
+		k = self.K(x)
+		v = self.V(x)
+		att = torch.bmm(q, k.permute(0, 2, 1))
+		att = torch.softmax(att, dim=2)
+		out = torch.bmm(att, v)
+		out = torch.sum(out, dim=1)
+		return out
+	def reducer(self, nodes):
+		m = nodes.mailbox['m']
+		#hidden_, hn = self.gru(m)  # hn: (1, batch_size, d)
+		#return {'neigh': hn.squeeze(0)}
+		hn=self.self_att_compute(m)
+		return {'neigh': hn}
 
+	def forward(self, mg, feat):
+		with mg.local_scope():
+			if self.batch_norm is not None:
+				feat = self.batch_norm(feat)
+			mg.ndata['ft'] = feat
+			if mg.number_of_edges() > 0:
+				mg.update_all(fn.copy_u('ft', 'm'), self.reducer)
+				neigh = mg.ndata['neigh']
+				rst = self.fc_self(feat) + self.fc_neigh(neigh)
+			else:
+				rst = self.fc_self(feat)
+			if self.activation is not None:
+				rst = self.activation(rst)
+			return rst
+
+class ONAN_GRU_ATT(nn.Module):
+	def __init__(self, input_dim, output_dim, dropout=0.0,activation=None, batch_norm=True):
+		super().__init__()
+		self.batch_norm = nn.BatchNorm1d(input_dim) if batch_norm else None
+		self.gru = nn.GRU(input_dim, input_dim,dropout=dropout, batch_first=True)
+		self.fc_self = nn.Linear(input_dim, output_dim, bias=False)
+		self.fc_neigh = nn.Linear(input_dim, output_dim, bias=False)
+		self.activation = activation
+		self.dim=input_dim
+		self.K = nn.Linear(self.dim, self.dim, bias=False)
+		self.Q = nn.Linear(self.dim, self.dim, bias=False)
+		self.V = nn.Linear(self.dim, self.dim, bias=False)
+		print('make ONAN_GRU_ATT Layer')
+	def self_att_compute(self, x):
+		# [seq, seq_hour, mask]
+		q = self.Q(x)
+		k = self.K(x)
+		v = self.V(x)
+		att = torch.bmm(q, k.permute(0, 2, 1))
+		att = torch.softmax(att, dim=2)
+		out = torch.bmm(att, v)
+		out = torch.sum(out, dim=1)
+		return out
+	def reducer(self, nodes):
+		m = nodes.mailbox['m']
+		hidden_, hn = self.gru(m)  # hn: (1, batch_size, d)
+		#return {'neigh': hn.squeeze(0)}
+		hn=self.self_att_compute(hidden_)
+		return {'neigh': hn}
+
+	def forward(self, mg, feat):
+		with mg.local_scope():
+			if self.batch_norm is not None:
+				feat = self.batch_norm(feat)
+			mg.ndata['ft'] = feat
+			if mg.number_of_edges() > 0:
+				mg.update_all(fn.copy_u('ft', 'm'), self.reducer)
+				neigh = mg.ndata['neigh']
+				rst = self.fc_self(feat) + self.fc_neigh(neigh)
+			else:
+				rst = self.fc_self(feat)
+			if self.activation is not None:
+				rst = self.activation(rst)
+			return rst
+
+class ONAN_GRU_LAST_ATT(nn.Module):
+	def __init__(self, input_dim, output_dim, dropout=0.0,activation=None, batch_norm=True):
+		super().__init__()
+		self.batch_norm = nn.BatchNorm1d(input_dim) if batch_norm else None
+		self.gru = nn.GRU(input_dim, input_dim,dropout=dropout, batch_first=True)
+		self.fc_self = nn.Linear(input_dim, output_dim, bias=False)
+		self.fc_neigh = nn.Linear(input_dim, output_dim, bias=False)
+		self.activation = activation
+		self.dim=input_dim
+		#self.K = nn.Linear(self.dim, self.dim, bias=False)
+		self.Q = nn.Linear(self.dim, self.dim, bias=False)
+		#self.V = nn.Linear(self.dim, self.dim, bias=False)
+		print('make ONAN_GRU_LAST_ATT Layer')
+	def self_att_compute(self, x,x_last):
+		# [seq, seq_hour, mask]
+		q = self.Q(x_last)# batch*dim #batch*M*dim
+		k = x     #batch*N*dim #batch*dim*N ->batch*M*N
+		v = x     #batch*N*dim ->batch*M*dim
+		q=torch.reshape(q,[q.shape[1],q.shape[0],q.shape[2]])
+		att = torch.bmm(q, k.permute(0, 2, 1))
+		att = torch.softmax(att, dim=2)
+		out = torch.bmm(att, v)
+		out = torch.sum(out, dim=1)
+		return out
+	def reducer(self, nodes):
+		m = nodes.mailbox['m']
+		hidden_, hn = self.gru(m)  # hn: (1, batch_size, d)
+		#return {'neigh': hn.squeeze(0)}
+		hn=self.self_att_compute(hidden_,x_last=hn)
+		return {'neigh': hn}
+
+	def forward(self, mg, feat):
+		with mg.local_scope():
+			if self.batch_norm is not None:
+				feat = self.batch_norm(feat)
+			mg.ndata['ft'] = feat
+			if mg.number_of_edges() > 0:
+				mg.update_all(fn.copy_u('ft', 'm'), self.reducer)
+				neigh = mg.ndata['neigh']
+				rst = self.fc_self(feat) + self.fc_neigh(neigh)
+			else:
+				rst = self.fc_self(feat)
+			if self.activation is not None:
+				rst = self.activation(rst)
+			return rst
+
+class SGAT(nn.Module):
+	def __init__(
+		self, input_dim, hidden_dim, output_dim, activation=None, batch_norm=True
+	):
+		super().__init__()
+		self.batch_norm = nn.BatchNorm1d(input_dim) if batch_norm else None
+		self.fc_q = nn.Linear(input_dim, hidden_dim, bias=True)
+		self.fc_k = nn.Linear(input_dim, hidden_dim, bias=False)
+		self.fc_v = nn.Linear(input_dim, output_dim, bias=False)
+		self.attn_e = nn.Linear(hidden_dim, 1, bias=False)
+		self.activation = activation
+
+	def forward(self, sg, feat):
+		with sg.local_scope():
+			if self.batch_norm is not None:
+				feat = self.batch_norm(feat)
+			q = self.fc_q(feat)
+			k = self.fc_k(feat)
+			v = self.fc_v(feat)
+			sg.ndata.update({'q': q, 'k': k, 'v': v})
+			sg.apply_edges(fn.u_add_v('q', 'k', 'e'))
+			e = self.attn_e(th.sigmoid(sg.edata['e']))
+			sg.edata['a'] = edge_softmax(sg, e)
+			sg.update_all(fn.u_mul_e('v', 'a', 'm'), fn.sum('m', 'ft'))
+			rst = sg.ndata['ft']
+			if self.activation is not None:
+				rst = self.activation(rst)
+			return rst
 
 class ONAN_Transformer(nn.Module):
 	def __init__(self, input_dim, output_dim, dropout=0.0,activation=None, batch_norm=True):
@@ -223,12 +386,12 @@ class GRU_GNN_Vector(nn.Module):
 		self.pooling_method='ATT'
 		if gnn_function=='GRU_2':
 			self.layers = nn.ModuleList([
-				ONAN(in_dim, hidden_dim, dropout=drop_out),
+				ONAN(in_dim, hidden_dim,dropout=drop_out),
 				ONAN(in_dim, hidden_dim, dropout=drop_out),
 			])
 		elif gnn_function=='GRU_1':
 			self.layers = nn.ModuleList([
-				ONAN(in_dim, hidden_dim, dropout=drop_out),
+				ONAN(in_dim, hidden_dim,dropout=drop_out),
 			])
 		elif gnn_function=='Transformer_POSGAT':
 			self.layers = nn.ModuleList([
@@ -467,7 +630,37 @@ def seq_to_gat_multigraph(seq):
 	g.add_edges(seq_nid,seq_nid)
 	return g
 
+def seq_to_position_multigraph(seq):
+	items = np.unique(seq)
+	iid2nid = {iid: i for i, iid in enumerate(items)}
+	num_nodes = len(items)
+	#计算出每个nid第一次出现的位置
+	nid_pos=np.zeros([num_nodes])
+	for i in range(len(seq)):
+		position_index=i%512
+		iid=seq[i]
+		nid=iid2nid[iid]
+		if nid_pos[nid]==0:
+			nid_pos[nid]=int(position_index)
+	position_data=np.zeros([num_nodes,8])
+	for k in range(num_nodes):
+		position_data[k]=pe[int(nid_pos[k])]
+	position_data=th.Tensor(position_data)
 
+	g = dgl.DGLGraph()
+	g.add_nodes(num_nodes)
+	g.ndata['iid'] = th.Tensor(items)
+	g.ndata['pos'] = position_data
+	#获取每个节点的位置信息
+	#获取每个节点的位置信息到节点的向量里面
+	seq_nid = [iid2nid[iid] for iid in seq]
+	if len(seq) > 1:
+		src = seq_nid[:-1]
+		dst = seq_nid[1:]
+		# edges are added in the order of their occurrences.
+		g.add_edges(src, dst)
+	g.add_edges(seq_nid,seq_nid)
+	return g
 
 class GNN_Match(nn.Module):
 	def __init__(self, num_items,embeds, embedding_dim,drop_out=0.0,gnn_function='GRU',dropout_fc=0.20):
