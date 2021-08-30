@@ -24,7 +24,7 @@ There are 3 steps for my codes:
 run the main_generate_graph.py to generate the long-range dependency paths for each user log  
 ##step 4B  
 run the following codes to get result only based on the log's sematic embedding features:  
-python3 main_gnn_match.py --gnn_function GRU_POSGAT --dim 64 --model_path GRU_POSGAT_d64_p10_m2 --deep_path 10 --dropout_fc 0  
+python3 main_gnn_match_random.py --gnn_function GRU_POSGAT --dim 64 --model_path GRU_POSGAT_d64_p10_m2 --deep_path 10
 the threshold are selected as 0.5 for the final result as common setting  
 ##step 4C:  
 run the following codes to get result only based on the log's sematic embedding features and the statistic features from GBUL:  
