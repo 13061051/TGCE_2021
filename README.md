@@ -26,6 +26,7 @@ run the main_generate_graph.py to generate the long-range dependency paths for e
 run the following codes to get result only based on the log's sematic embedding features:  
 python3 main_gnn_match_random.py --gnn_function GRU_POSGAT --dim 64 --model_path GRU_POSGAT_d64_p10_m2 --deep_path 10
 the threshold are selected as 0.5 for the final result as common setting  
+you can see one time running log r_g13_t5.log 
 ##step 4C:  
 run the following codes to get result only based on the log's sematic embedding features and the statistic features from GBUL:  
 python3 train_gnn_xgb.py --dim 64 --model_path gnn_xgb_m5 --drop_out_fc 0.3 --valid_ratio 0.05 --epochs 20  
